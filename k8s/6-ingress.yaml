@@ -1,0 +1,75 @@
+# ============================================================================
+# FILE: 6-ingress.yaml
+# PURPOSE: NGINX Ingress for advanced HTTP routing and canary traffic control
+# ============================================================================
+#
+# DESCRIPTION:
+# This Ingress resource provides advanced Layer 7 (HTTP/HTTPS) routing with
+# sophisticated canary deployment capabilities using NGINX Ingress Controller.
+#
+# PREREQUISITE:
+# NGINX Ingress Controller must be installed in your cluster:
+# kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.1/deploy/static/provider/cloud/deploy.yaml
+#
+# ADVANTAGES OVER SERVICE:
+# - Domain-based routing (host names)
+# - Path-based routing (URL paths)
+# - SSL/TLS termination
+# - Precise traffic splitting (percentage-based)
+# - Header-based routing
+# - A/B testing capabilities
+#
+# CANARY ANNOTATIONS:
+# These NGINX-specific annotations enable fine-grained traffic control:
+#
+# - canary: "true"
+#   Enables canary mode for this ingress
+#
+# - canary-weight: "25"
+#   Routes 25% of traffic to canary version
+#   Range: 0-100 (percentage)
+#   Adjust this to control canary exposure
+#
+# OTHER CANARY OPTIONS (not used here, but available):
+# - canary-by-header: Route based on request header
+# - canary-by-cookie: Route based on cookie value
+# - canary-by-header-value: Specific header value routing
+#
+# TRAFFIC FLOW:
+# 1. User request arrives at: http://space-battle.example.com
+# 2. NGINX evaluates canary-weight annotation
+# 3. 25% of requests → canary pods
+# 4. 75% of requests → stable pods
+# 5. Provides more precise control than replica-based splitting
+#
+# CUSTOMIZATION:
+# - Change 'host' to your actual domain name
+# - Adjust 'canary-weight' to change traffic percentage
+# - Add SSL/TLS configuration for HTTPS
+# - Add multiple paths for different routes
+#
+# NOTE: This provides an alternative to the service-based traffic splitting.
+# You can use either approach or both together.
+# ============================================================================
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: space-battle-ingress
+  namespace: space-battle-game
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"  # Disable HTTPS redirect
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: space-battle.example.com  # CHANGE THIS to your actual domain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: space-battle-service
+            port:
+              number: 80

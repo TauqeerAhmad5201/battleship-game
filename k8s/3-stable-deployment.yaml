@@ -1,0 +1,97 @@
+# ============================================================================
+# FILE: 3-stable-deployment.yaml
+# PURPOSE: Deploys the production-stable version of the Space Battle Game
+# ============================================================================
+#
+# DESCRIPTION:
+# This is the STABLE deployment that serves the majority of production traffic.
+# It runs the tested, reliable version of your application that has been
+# validated through the canary deployment process.
+#
+# KEY FEATURES:
+# - 3 replicas for high availability and load distribution
+# - Uses the 'latest' Docker image tag (production-ready version)
+# - Handles approximately 75% of traffic (3 out of 4 total pods)
+# - Auto-scaling enabled via HPA (file 7) - can scale from 3 to 10 pods
+#
+# HEALTH CHECKS:
+# - Liveness Probe: Restarts container if app becomes unresponsive
+#   * Checks HTTP GET / every 10 seconds
+#   * Fails after 3 consecutive failures
+# - Readiness Probe: Removes pod from service if not ready
+#   * Checks HTTP GET / every 5 seconds
+#   * Faster response ensures quick traffic routing
+#
+# RESOURCE MANAGEMENT:
+# - Requests: CPU 100m, Memory 128Mi (guaranteed resources)
+# - Limits: CPU 500m, Memory 512Mi (maximum allowed)
+# - Prevents resource starvation and ensures fair scheduling
+#
+# DEPLOYMENT STRATEGY:
+# - RollingUpdate by default (zero-downtime deployments)
+# - Gradually replaces old pods with new ones
+# - Always maintains minimum availability
+#
+# IMAGE: tauqeerops/space-battleship-game:latest
+# ============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: space-battle-stable
+  namespace: space-battle-game
+  labels:
+    app: space-battle
+    version: stable
+    track: stable
+spec:
+  replicas: 3  # Production replicas - handles majority of traffic
+  selector:
+    matchLabels:
+      app: space-battle
+      version: stable
+  template:
+    metadata:
+      labels:
+        app: space-battle
+        version: stable
+        track: stable
+    spec:
+      containers:
+      - name: space-battle
+        image: tauqeerops/space-battle-game:latest  # Stable production image
+        imagePullPolicy: Always  # Always pull latest to ensure updates
+        ports:
+        - containerPort: 3000
+          name: http
+          protocol: TCP
+        env:
+        - name: APP_VERSION
+          value: "stable"
+        envFrom:
+        - configMapRef:
+            name: space-battle-config
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      restartPolicy: Always

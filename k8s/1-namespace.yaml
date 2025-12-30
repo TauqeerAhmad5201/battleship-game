@@ -1,0 +1,32 @@
+# ============================================================================
+# FILE: 1-namespace.yaml
+# PURPOSE: Creates an isolated Kubernetes namespace for the Space Battle Game
+# ============================================================================
+# 
+# DESCRIPTION:
+# This file creates a dedicated namespace that acts as a virtual cluster within
+# your Kubernetes cluster. Namespaces provide:
+# - Resource isolation and organization
+# - Scope for resource names (avoid naming conflicts)
+# - Security boundaries for RBAC and network policies
+# - Easy resource management and cleanup
+#
+# The 'space-battle-game' namespace will contain all related resources:
+# - Deployments (stable and canary)
+# - Services
+# - ConfigMaps
+# - HPAs
+# - Network Policies
+#
+# LABELS:
+# - name: Identifies the namespace
+# - environment: Marks this as a production environment
+# ============================================================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: space-battle-game
+  labels:
+    name: space-battle-game
+    environment: production

@@ -1,0 +1,103 @@
+# ============================================================================
+# FILE: 4-canary-deployment.yaml
+# PURPOSE: Deploys the canary (test) version for gradual feature rollout
+# ============================================================================
+#
+# DESCRIPTION:
+# This is the CANARY deployment used to test new features, updates, or bug fixes
+# with a small subset of users before rolling out to all production traffic.
+# This implements the "canary release" pattern for safe deployments.
+#
+# CANARY DEPLOYMENT STRATEGY:
+# The canary deployment allows you to:
+# - Test new features with real production traffic
+# - Detect issues early with minimal user impact
+# - Validate performance under real-world conditions
+# - Roll back quickly if problems are detected
+# - Gain confidence before full production rollout
+#
+# KEY FEATURES:
+# - 1 replica (can scale to 3 via HPA in file 8)
+# - Uses the 'canary' Docker image tag (pre-production version)
+# - Handles approximately 25% of traffic (1 out of 4 total pods)
+# - Limited blast radius - only affects 25% of users if issues occur
+#
+# HEALTH CHECKS:
+# - Same liveness and readiness probes as stable
+# - Ensures canary pods meet same health standards
+# - Failed health checks prevent traffic routing
+#
+# RESOURCE MANAGEMENT:
+# - Same resource requests/limits as stable deployment
+# - Ensures fair comparison between versions
+# - Prevents resource-related performance differences
+#
+# PROMOTION PROCESS:
+# 1. Deploy canary with new features
+# 2. Monitor metrics (errors, latency, resource usage)
+# 3. If successful: Update stable deployment to use canary image
+# 4. If issues found: Scale canary to 0 or delete
+#
+# IMAGE: tauqeerops/space-battleship-game:canary
+# ============================================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: space-battle-canary
+  namespace: space-battle-game
+  labels:
+    app: space-battle
+    version: canary
+    track: canary
+spec:
+  replicas: 1  # Limited replicas for testing - handles ~25% of traffic
+  selector:
+    matchLabels:
+      app: space-battle
+      version: canary
+  template:
+    metadata:
+      labels:
+        app: space-battle
+        version: canary
+        track: canary
+    spec:
+      containers:
+      - name: space-battle
+        image: tauqeerops/space-battle-game:canary  # Canary test image
+        imagePullPolicy: Always  # Always pull to test latest changes
+        ports:
+        - containerPort: 3000
+          name: http
+          protocol: TCP
+        env:
+        - name: APP_VERSION
+          value: "canary"
+        envFrom:
+        - configMapRef:
+            name: space-battle-config
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      restartPolicy: Always

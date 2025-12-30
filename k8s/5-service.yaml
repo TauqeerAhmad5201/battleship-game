@@ -1,0 +1,59 @@
+# ============================================================================
+# FILE: 5-service.yaml
+# PURPOSE: Main LoadBalancer service for external access to the application
+# ============================================================================
+#
+# DESCRIPTION:
+# This service is the primary entry point for users to access the Space Battle
+# Game. It automatically load balances traffic across ALL pods (both stable and
+# canary) that match the selector labels.
+#
+# SERVICE TYPE: LoadBalancer
+# - Creates an external load balancer in your cloud provider (AWS ELB, Azure LB, GCP LB)
+# - Assigns a public IP address for internet access
+# - Distributes incoming traffic across all matching pods
+# - Provides automatic failover and health checking
+#
+# TRAFFIC DISTRIBUTION:
+# The service routes to pods with label: app=space-battle
+# This includes BOTH stable and canary pods, resulting in:
+# - 3 stable pods + 1 canary pod = 4 total pods
+# - Traffic split: ~75% stable (3/4), ~25% canary (1/4)
+# - Distribution is automatic and proportional to pod count
+#
+# PORT MAPPING:
+# - External Port: 80 (standard HTTP)
+# - Target Port: 3000 (container port)
+# - Users access: http://<EXTERNAL-IP>:80
+#
+# SESSION AFFINITY: None
+# - Each request can go to any pod (true load balancing)
+# - For sticky sessions, change to 'ClientIP'
+#
+# HOW IT WORKS WITH CANARY:
+# The selector 'app: space-battle' matches all pods regardless of version.
+# This creates natural traffic splitting based on replica count:
+# - Increase canary replicas = more canary traffic
+# - Decrease canary replicas = less canary traffic
+# - Delete canary deployment = 100% stable traffic
+#
+# ALTERNATIVE: Use file 9 (servicemonitor.yaml) for version-specific routing
+# ============================================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: space-battle-service
+  namespace: space-battle-game
+  labels:
+    app: space-battle
+spec:
+  type: LoadBalancer  # Creates external load balancer with public IP
+  selector:
+    app: space-battle  # Routes to ALL pods with this label (stable + canary)
+  ports:
+  - name: http
+    port: 80           # External port users connect to
+    targetPort: 3000   # Container port the app listens on
+    protocol: TCP
+  sessionAffinity: None  # Random distribution across pods
